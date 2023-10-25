@@ -1,12 +1,30 @@
+import { MENU_ITEMS } from "@/constants";
+import { actionItemClick } from "@/slice/menuSlice";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 const Board= ()=>{
     const canvasRef= useRef(null);  //cant use the getElementById coz of vertual DOM in react thats why using useRef to access teh component refecrence
     const shouldDraw= useRef(false);
-
+    const actionMenuItem = useSelector((state) => state.menu.actionMenuItem);
     const activeMenuItem = useSelector((state) => state.menu.activeMenuItem);
     const {color,size}= useSelector((state)=>state.toolbox[activeMenuItem])
+    const dispatch= useDispatch();
+
+    useEffect(()=>{
+        if(!canvasRef.current) return;
+        const canvas=canvasRef.current;
+        const context = canvas.getContext('2d');
+
+        if(actionMenuItem===MENU_ITEMS.DOWNLOAD){
+            const URL= canvas.toDataURL()
+            const anchor= document.createElement('a')
+            anchor.href=URL
+            anchor.download= 'sketch.jpg'
+            anchor.click();
+        }
+        dispatch(actionItemClick(null)); //will not trigger again even it is in the dependency
+    },[actionMenuItem])
 
     useEffect(()=>{
         if(!canvasRef.current) return;
@@ -20,7 +38,6 @@ const Board= ()=>{
 
         chnageConfig();
     },[color,size])
-
 
 
     //before the paint effect
