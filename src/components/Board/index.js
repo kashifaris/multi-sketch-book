@@ -2,7 +2,7 @@ import { MENU_ITEMS } from "@/constants";
 import { actionItemClick } from "@/slice/menuSlice";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-
+import { socket } from "@/socket";
 const Board= ()=>{
     const canvasRef= useRef(null);  //cant use the getElementById coz of vertual DOM in react thats why using useRef to access teh component refecrence
     const shouldDraw= useRef(false);
@@ -38,12 +38,21 @@ const Board= ()=>{
         const canvas=canvasRef.current;
         const context = canvas.getContext('2d');
 
-        const chnageConfig= ()=>{
+        const chnageConfig= (color,size)=>{
             context.strokeStyle = color; //set color
             context.lineWidth= size;  //set size
         }
 
-        chnageConfig();
+        const handleChangeConfig= (config)=>{
+            chnageConfig(config.color,config.size);
+        }
+        chnageConfig(color,size);
+        socket.on('changeConfig',handleChangeConfig)
+
+        return()=>{
+            socket.off('changeConfig',handleChangeConfig)
+
+        }
     },[color,size])
 
 
@@ -69,10 +78,13 @@ const Board= ()=>{
         const handleMouseDown= (e)=>{
             shouldDraw.current=true;
             beginPath(e.clientX,e.clientY)
+            socket.emit('beginPath',{x:e.clientX,y:e.clientY})
         }
         const handleMouseMove= (e)=>{
             if(!shouldDraw.current) return
             drawLine(e.clientX,e.clientY);  //paint only till true
+            socket.emit('drawLine',{x:e.clientX,y:e.clientY})
+
         }
         const handleMouseUp= (e)=>{
             shouldDraw.current=false;
@@ -80,15 +92,30 @@ const Board= ()=>{
             drawHistory.current.push(imageData)
             historyPointer.current= drawHistory.current.length-1;
         }
+
+       const handleBeginPath= (path)=>{
+            beginPath(path.x,path.y)
+        }
+
+      const  handleDrawLine= (path)=>{
+            drawLine(path.x,path.y)
+        }
         
         canvas.addEventListener('mousedown',handleMouseDown)
         canvas.addEventListener('mousemove',handleMouseMove)
         canvas.addEventListener('mouseup',handleMouseUp)
+        
+        socket.on("beginPath", handleBeginPath);
+        socket.on("drawLine", handleDrawLine);
+
 
         return()=>{
             canvas.removeEventListener('mousedown',handleMouseDown)
             canvas.removeEventListener('mousemove',handleMouseMove)
             canvas.removeEventListener('mouseup',handleMouseUp)
+
+            socket.off("beginPath", handleBeginPath);
+            socket.off("drawLine", handleDrawLine);
         }
     },[])
 
